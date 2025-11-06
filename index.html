@@ -648,9 +648,8 @@
         }
 
         .contact-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         .contact-info {
@@ -707,54 +706,6 @@
 
         .contact-item-text a:hover {
             color: var(--primary-blue);
-        }
-
-        .contact-form {
-            background: var(--white);
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 5px 30px var(--shadow);
-            border: 2px solid var(--extra-light-blue);
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-            color: var(--primary-blue);
-            font-weight: 600;
-        }
-
-        .form-group label i {
-            font-size: 1rem;
-        }
-
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 0.8rem;
-            border: 2px solid var(--medium-gray);
-            border-radius: 8px;
-            font-family: inherit;
-            transition: all 0.3s;
-            font-size: 1rem;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 3px var(--extra-light-blue);
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 120px;
         }
 
         .social-links {
@@ -944,8 +895,7 @@
                 font-size: 2rem;
             }
 
-            .about-content,
-            .contact-content {
+            .about-content {
                 grid-template-columns: 1fr;
             }
 
@@ -1572,16 +1522,6 @@
                 <div class="contact-info">
                     <div class="contact-item">
                         <div class="contact-item-icon">
-                            <i class="fas fa-envelope"></i>
-                        </div>
-                        <div class="contact-item-text">
-                            <h4>Email</h4>
-                            <p><a href="mailto:fendy.gpradana@email.com">fendy.gpradana@email.com</a></p>
-                        </div>
-                    </div>
-
-                    <div class="contact-item">
-                        <div class="contact-item-icon">
                             <i class="fas fa-phone-alt"></i>
                         </div>
                         <div class="contact-item-text">
@@ -1623,47 +1563,7 @@
                         <a href="https://instagram.com/fendygp" target="_blank" class="social-link" title="Instagram">
                             <i class="fab fa-instagram"></i>
                         </a>
-                        <a href="https://wa.me/6281234567890" target="_blank" class="social-link" title="WhatsApp">
-                            <i class="fab fa-whatsapp"></i>
-                        </a>
                     </div>
-                </div>
-
-                <div class="contact-form">
-                    <form onsubmit="handleSubmit(event)">
-                        <div class="form-group">
-                            <label for="name">
-                                <i class="fas fa-user"></i>
-                                Full Name
-                            </label>
-                            <input type="text" id="name" name="name" placeholder="John Doe" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="email">
-                                <i class="fas fa-envelope"></i>
-                                Email Address
-                            </label>
-                            <input type="email" id="email" name="email" placeholder="john.doe@example.com" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="subject">
-                                <i class="fas fa-tag"></i>
-                                Subject
-                            </label>
-                            <input type="text" id="subject" name="subject" placeholder="Project Inquiry" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="message">
-                                <i class="fas fa-comment-dots"></i>
-                                Message
-                            </label>
-                            <textarea id="message" name="message" placeholder="Tell me about your project or inquiry..." required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">
-                            <i class="fas fa-paper-plane"></i>
-                            Send Message
-                        </button>
-                    </form>
                 </div>
             </div>
         </div>
