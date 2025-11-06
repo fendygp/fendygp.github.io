@@ -160,18 +160,15 @@ body::before {
 }
 
 .tagline {
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-    font-style: italic;
-}
-
-.description {
-    font-size: 1rem;
-    color: var(--text-secondary);
-    line-height: 1.6;
-    font-weight: 400;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f5576c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
+    line-height: 1.4;
+    margin-top: 0.5rem;
 }
 
 /*------------------------------------*\
@@ -197,11 +194,7 @@ body::before {
     }
 
     .tagline {
-        font-size: 1.1rem;
-    }
-
-    .description {
-        font-size: 0.95rem;
+        font-size: 1.15rem;
     }
 }
 
@@ -220,7 +213,7 @@ body::before {
     }
 
     .tagline {
-        font-size: 1rem;
+        font-size: 1.05rem;
     }
 }
 
