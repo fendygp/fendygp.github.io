@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperAHP Multi-Expert V2 (Fixed)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .expert-tab.active { background-color: #4f46e5; color: white; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.4); }
+    </style>
+</head>
+<body class="antialiased text-slate-900 pb-20">
+
+    <div class="max-w-6xl mx-auto p-4 md:p-8">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl font-extrabold text-indigo-700">SuperAHP Multi-Expert</h1>
+            <p class="text-slate-500">Penilaian Grup dengan Rata-rata Geometrik</p>
+        </header>
+
+        <section id="panel-model" class="panel active card bg-white p-8 rounded-3xl shadow-sm border">
+            <div class="grid md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block font-bold mb-2">Jumlah Ahli</label>
+                    <input type="number" id="numExperts" min="1" value="2" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-400">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block font-bold mb-2">Kriteria (Pisahkan koma)</label>
+                    <input type="text" id="critList" class="w-full p-3 border rounded-xl" placeholder="Biaya, Kualitas, Jarak">
+                </div>
+                <div class="md:col-span-3">
+                    <label class="block font-bold mb-2">Alternatif (Pisahkan koma)</label>
+                    <input type="text" id="altList" class="w-full p-3 border rounded-xl" placeholder="Produk A, Produk B, Produk C">
+                </div>
+            </div>
+            <button onclick="initSystem()" class="mt-8 w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition">Siapkan Matriks Penilaian</button>
+        </section>
+
+        <section id="panel-judgments" class="panel space-y-8">
+            <div class="flex flex-wrap gap-2 mb-4" id="expertTabs"></div>
+            
+            <div id="matrixArea" class="space-y-10">
+                </div>
+
+            <button onclick="calculateGroupResult()" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-bold text-xl shadow-xl hover:bg-emerald-700">HITUNG HASIL KONSENSUS</button>
+        </section>
+
+        <section id="panel-synthesis" class="panel space-y-8">
+            <div id="pdf-content" class="bg-white p-8 rounded-3xl border">
+                <div class="grid lg:grid-cols-2 gap-10">
+                    <div>
+                        <h3 class="text-xl font-bold mb-6">Peringkat Akhir Grup</h3>
+                        <canvas id="groupChart" height="250"></canvas>
+                        <div id="rankTable" class="mt-6"></div>
+                    </div>
+                    <div class="space-y-6">
+                        <div class="bg-slate-900 text-white p-6 rounded-2xl">
+                            <h4 class="font-bold text-indigo-400 mb-4">Bobot Prioritas Kriteria</h4>
+                            <div id="critWeights" class="space-y-3"></div>
+                        </div>
+                        <div class="p-6 border rounded-2xl bg-indigo-50">
+                            <h4 class="font-bold text-indigo-900 mb-2">Konsistensi Grup (CR)</h4>
+                            <div id="crValue" class="text-3xl font-black"></div>
+                            <p class="text-xs text-indigo-700 mt-2 italic">*Hasil dianggap valid jika CR < 10%</p>
+                        </div>
+                        <button onclick="exportPDF()" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold">Download PDF Report</button>
+                    </div>
+                </div>
+            </div>
+            <button onclick="location.reload()" class="w-full text-slate-400 underline">Mulai Dari Awal</button>
+        </section>
+    </div>
+
+    <script>
+        let state = {
+            experts: [], criteria: [], alternatives: [],
+            activeExpertIdx: 0,
+            judgments: {} // Tempat menyimpan data permanen { "e0_c_0_1": 3 }
+        };
+        const RI = [0, 0, 0.58, 0.9, 1.12, 1.24, 1.32, 1.41, 1.45, 1.49];
+
+        function showPanel(id) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(`panel-${id}`).classList.add('active');
+            window.scrollTo(0,0);
+        }
+
+        function initSystem() {
+            const nExp = parseInt(document.getElementById('numExperts').value);
+            state.criteria = document.getElementById('critList').value.split(',').map(s => s.trim()).filter(s => s);
+            state.alternatives = document.getElementById('altList').value.split(',').map(s => s.trim()).filter(s => s);
+            
+            if(state.criteria.length < 2 || state.alternatives.length < 2) return alert("Kriteria & Alternatif minimal 2!");
+
+            state.experts = Array.from({length: nExp}, (_, i) => `Expert ${i+1}`);
+            renderTabs();
+            renderMatrices();
+            showPanel('judgments');
+        }
+
+        function renderTabs() {
+            let html = "";
+            state.experts.forEach((name, i) => {
+                html += `<button onclick="switchExpert(${i})" class="expert-tab px-6 py-2 rounded-full border transition ${i === state.activeExpertIdx ? 'active' : 'bg-white'}">${name}</button>`;
+            });
+            document.getElementById('expertTabs').innerHTML = html;
+        }
+
+        function switchExpert(idx) {
+            state.activeExpertIdx = idx;
+            renderTabs();
+            renderMatrices();
+        }
+
+        function renderMatrices() {
+            let html = `<div class="bg-white p-6 rounded-2xl border shadow-sm">
+                <h3 class="font-bold text-indigo-600 mb-4 uppercase text-sm tracking-widest">${state.experts[state.activeExpertIdx]} : Perbandingan Kriteria</h3>
+                ${createTableHTML(`e${state.activeExpertIdx}_c`, state.criteria)}
+            </div>`;
+
+            state.criteria.forEach((crit, cI) => {
+                html += `<div class="bg-white p-6 rounded-2xl border shadow-sm">
+                    <h3 class="font-bold text-emerald-600 mb-4 uppercase text-sm tracking-widest">${state.experts[state.activeExpertIdx]} : Alternatif untuk ${crit}</h3>
+                    ${createTableHTML(`e${state.activeExpertIdx}_a${cI}`, state.alternatives)}
+                </div>`;
+            });
+            document.getElementById('matrixArea').innerHTML = html;
+        }
+
+        function createTableHTML(prefix, items) {
+            let html = `<div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead><tr class="text-slate-400"><th></th>`;
+            items.forEach(it => html += `<th class="p-2 font-normal">${it}</th>`);
+            html += `</tr></thead><tbody>`;
+            
+            items.forEach((row, i) => {
+                html += `<tr><td class="p-2 font-bold bg-slate-50 w-32">${row}</td>`;
+                items.forEach((col, j) => {
+                    const id = `${prefix}_${i}_${j}`;
+                    if(i === j) html += `<td class="p-2 text-center text-slate-300">1</td>`;
+                    else if(i < j) {
+                        const savedVal = state.judgments[id] || 1;
+                        html += `<td class="p-2">
+                            <input type="number" step="0.1" value="${savedVal}" 
+                            oninput="saveVal('${id}', this.value, '${prefix}_${j}_${i}_inv')" 
+                            class="w-16 p-2 border rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none font-bold">
+                        </td>`;
+                    } else {
+                        const invId = `${prefix}_${j}_${i}`;
+                        const invVal = state.judgments[invId] ? (1/state.judgments[invId]).toFixed(2) : "1.00";
+                        html += `<td class="p-2 text-center text-slate-400 font-mono text-xs" id="${prefix}_${i}_${j}_inv">${invVal}</td>`;
+                    }
+                });
+                html += `</tr>`;
+            });
+            return html + `</tbody></table></div>`;
+        }
+
+        function saveVal(id, val, invId) {
+            state.judgments[id] = parseFloat(val) || 1;
+            document.getElementById(invId).innerText = (1/parseFloat(val)).toFixed(2);
+        }
+
+        function getFullMatrix(prefix, size) {
+            let m = Array.from({length: size}, () => Array(size).fill(1));
+            for(let i=0; i<size; i++) {
+                for(let j=0; j<size; j++) {
+                    if(i < j) m[i][j] = state.judgments[`${prefix}_${i}_${j}`] || 1;
+                    else if(i > j) m[i][j] = 1 / (state.judgments[`${prefix}_${j}_${i}`] || 1);
+                }
+            }
+            return m;
+        }
+
+        function calculateGroupResult() {
+            // 1. Agregasi Matriks Kriteria (Geometric Mean)
+            let aggCritMat = Array.from({length: state.criteria.length}, () => Array(state.criteria.length).fill(1));
+            for(let i=0; i<state.criteria.length; i++) {
+                for(let j=0; j<state.criteria.length; j++) {
+                    let product = 1;
+                    for(let e=0; e<state.experts.length; e++) {
+                        product *= getFullMatrix(`e${e}_c`, state.criteria.length)[i][j];
+                    }
+                    aggCritMat[i][j] = Math.pow(product, 1/state.experts.length);
+                }
+            }
+            const groupCritRes = solveAHP(aggCritMat);
+
+            // 2. Agregasi Matriks Alternatif per Kriteria
+            let groupAltWeights = [];
+            state.criteria.forEach((_, cIdx) => {
+                let aggAltMat = Array.from({length: state.alternatives.length}, () => Array(state.alternatives.length).fill(1));
+                for(let i=0; i<state.alternatives.length; i++) {
+                    for(let j=0; j<state.alternatives.length; j++) {
+                        let product = 1;
+                        for(let e=0; e<state.experts.length; e++) {
+                            product *= getFullMatrix(`e${e}_a${cIdx}`, state.alternatives.length)[i][j];
+                        }
+                        aggAltMat[i][j] = Math.pow(product, 1/state.experts.length);
+                    }
+                }
+                groupAltWeights.push(solveAHP(aggAltMat).weights);
+            });
+
+            // 3. Synthesis
+            let finalScores = Array(state.alternatives.length).fill(0);
+            state.alternatives.forEach((_, aI) => {
+                state.criteria.forEach((_, cI) => {
+                    finalScores[aI] += (groupAltWeights[cI][aI] * groupCritRes.weights[cI]);
+                });
+            });
+
+            renderSynthesis(finalScores, groupCritRes.weights, groupCritRes.cr);
+            showPanel('synthesis');
+        }
+
+        function solveAHP(matrix) {
+            const n = matrix.length;
+            let colSums = Array(n).fill(0);
+            for(let j=0; j<n; j++) for(let i=0; i<n; i++) colSums[j] += matrix[i][j];
+
+            let weights = Array(n).fill(0);
+            for(let i=0; i<n; i++) {
+                let rowSumNorm = 0;
+                for(let j=0; j<n; j++) rowSumNorm += (matrix[i][j]/colSums[j]);
+                weights[i] = rowSumNorm/n;
+            }
+
+            let weightedSum = Array(n).fill(0);
+            for(let i=0; i<n; i++) for(let j=0; j<n; j++) weightedSum[i] += matrix[i][j] * weights[j];
+            let lambda = 0;
+            for(let i=0; i<n; i++) lambda += weightedSum[i] / weights[i];
+            lambda /= n;
+            let ci = (lambda - n) / (n - 1 || 1);
+            let cr = ci / (RI[n-1] || 1);
+            return { weights, cr };
+        }
+
+        function renderSynthesis(scores, cW, cr) {
+            const sorted = state.alternatives.map((name, i) => ({ name, score: scores[i] })).sort((a,b) => b.score - a.score);
+            
+            // Chart
+            const ctx = document.getElementById('groupChart');
+            if(window.myChart) window.myChart.destroy();
+            window.myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sorted.map(d => d.name),
+                    datasets: [{ label: 'Score', data: sorted.map(d => d.score), backgroundColor: '#6366f1', borderRadius: 8 }]
+                },
+                options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+            });
+
+            // Table
+            let table = `<table class="w-full text-sm"><thead><tr class="border-b"><th class="text-left py-2">Rank</th><th class="text-left py-2">Node</th><th class="text-right py-2">Score</th></tr></thead><tbody>`;
+            sorted.forEach((d, i) => {
+                table += `<tr class="border-b"><td class="py-2 font-bold text-indigo-600">#${i+1}</td><td class="py-2">${d.name}</td><td class="py-2 text-right font-mono">${(d.score*100).toFixed(2)}%</td></tr>`;
+            });
+            document.getElementById('rankTable').innerHTML = table + '</tbody></table>';
+
+            // Crit Weights
+            let cHtml = "";
+            state.criteria.forEach((c, i) => {
+                cHtml += `<div class="flex justify-between text-xs"><span>${c}</span><span>${(cW[i]*100).toFixed(1)}%</span></div><div class="w-full bg-slate-700 h-1 rounded-full overflow-hidden"><div class="bg-indigo-400 h-full" style="width:${cW[i]*100}%"></div></div>`;
+            });
+            document.getElementById('critWeights').innerHTML = cHtml;
+
+            document.getElementById('crValue').innerText = (cr*100).toFixed(2) + "%";
+            document.getElementById('crValue').className = `text-3xl font-black ${cr > 0.1 ? 'text-red-500' : 'text-emerald-500'}`;
+        }
+
+        async function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const canvas = await html2canvas(document.getElementById('pdf-content'));
+            doc.text("Laporan Akhir Keputusan Grup - AHP", 15, 15);
+            doc.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 25, 190, 0);
+            doc.save('Hasil_AHP_Group.pdf');
+        }
+    </script>
+</body>
+</html>
