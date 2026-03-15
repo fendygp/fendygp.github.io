@@ -556,52 +556,102 @@
             reader.readAsText(file);
         }
 
+        // Capture satu elemen DOM menjadi satu atau lebih halaman PDF
+        async function captureElementToPages(doc, el, margin) {
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const usableH = pageHeight - margin * 2;
+            const imgWidth = pageWidth - margin * 2;
+
+            const canvas = await html2canvas(el, { scale: 1.8, useCORS: true, backgroundColor: '#ffffff' });
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let remain = imgHeight;
+
+            while (remain > 0) {
+                const sliceH = Math.min(remain, usableH);
+                const srcY = (imgHeight - remain) * (canvas.height / imgHeight);
+                const srcH = sliceH * (canvas.height / imgHeight);
+
+                const slice = document.createElement('canvas');
+                slice.width = canvas.width;
+                slice.height = srcH;
+                slice.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+
+                doc.addPage();
+                doc.addImage(slice.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, sliceH);
+                remain -= sliceH;
+            }
+        }
+
         async function exportPDF() {
             const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const margin = 10;
+            const pageWidth = doc.internal.pageSize.getWidth();
 
-            // Tampilkan semua panel expert sebelum di-capture
-            document.querySelectorAll('.expert-detail-panel').forEach(p => p.style.display = 'block');
+            // Helper: tambahkan halaman judul teks
+            const addSectionTitle = (title, subtitle = '') => {
+                doc.addPage();
+                doc.setFillColor(79, 70, 229);
+                doc.rect(0, 0, pageWidth, 20, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(13);
+                doc.setFont(undefined, 'bold');
+                doc.text(title, margin, 13);
+                if (subtitle) {
+                    doc.setFontSize(9);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(subtitle, margin, 18);
+                }
+                doc.setTextColor(0, 0, 0);
+            };
+
+            // ---- Halaman cover ----
+            // Halaman pertama kosong — jsPDF selalu buat 1 halaman, kita pakai sebagai cover
+            doc.setFillColor(79, 70, 229);
+            doc.rect(0, 0, pageWidth, 60, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(20);
+            doc.setFont(undefined, 'bold');
+            doc.text('Laporan AHP Multi-Expert', margin, 30);
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'normal');
+            doc.text('Penilaian Grup dengan Rata-rata Geometrik', margin, 42);
+            doc.setFontSize(9);
+            doc.text(`Dicetak: ${new Date().toLocaleDateString('id-ID', {day:'2-digit',month:'long',year:'numeric'})}`, margin, 54);
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(10);
+            doc.text(`Expert   : ${state.experts.length} orang`, margin, 75);
+            doc.text(`Kriteria : ${state.criteria.join(', ')}`, margin, 84);
+            doc.text(`Alternatif: ${state.alternatives.join(', ')}`, margin, 93);
+
+            // ---- Halaman Resume Grup ----
+            addSectionTitle('Hasil Konsensus Grup', 'Peringkat akhir & bobot kriteria gabungan semua expert');
+            const groupEl = document.querySelector('#pdf-content > div:first-child');
+            await captureElementToPages(doc, groupEl, margin);
+
+            // ---- Halaman per Expert ----
+            // Tampilkan semua panel dulu
+            document.querySelectorAll('.expert-detail-panel').forEach(p => { p.style.display = 'block'; });
             document.getElementById('expertDetailTabs').style.display = 'none';
 
-            const content = document.getElementById('pdf-content');
-            const canvas = await html2canvas(content, { scale: 1.5, useCORS: true });
+            for (let eIdx = 0; eIdx < state.experts.length; eIdx++) {
+                addSectionTitle(
+                    `Detail: ${state.experts[eIdx]}`,
+                    `Bobot kriteria & alternatif per kriteria — ${state.experts[eIdx]}`
+                );
+                const panelEl = document.getElementById(`expert-detail-${eIdx}`);
+                await captureElementToPages(doc, panelEl, margin);
+            }
 
-            // Kembalikan ke semula
+            // Kembalikan tampilan layar
             document.querySelectorAll('.expert-detail-panel').forEach((p, i) => {
                 p.style.display = i === 0 ? 'block' : 'none';
             });
             document.getElementById('expertDetailTabs').style.display = '';
 
-            const imgData = canvas.toDataURL('image/png');
-            const doc = new jsPDF('p', 'mm', 'a4');
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const pageHeight = doc.internal.pageSize.getHeight();
-            const margin = 10;
-            const imgWidth = pageWidth - margin * 2;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            let yPos = margin;
-            let remainHeight = imgHeight;
-
-            // Potong gambar jika lebih dari satu halaman
-            while (remainHeight > 0) {
-                const sliceHeight = Math.min(remainHeight, pageHeight - margin * 2);
-                const srcY = (imgHeight - remainHeight) * (canvas.height / imgHeight);
-                const srcH = sliceHeight * (canvas.height / imgHeight);
-
-                const sliceCanvas = document.createElement('canvas');
-                sliceCanvas.width = canvas.width;
-                sliceCanvas.height = srcH;
-                const ctx = sliceCanvas.getContext('2d');
-                ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
-
-                if (yPos > margin) doc.addPage();
-                doc.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, sliceHeight);
-
-                remainHeight -= sliceHeight;
-                yPos += sliceHeight;
-            }
-
+            // Hapus halaman kosong pertama yang auto-dibuat jsPDF jika kita sudah addPage
+            // jsPDF v2: halaman 1 sudah kita pakai sebagai cover, tidak perlu dihapus
             doc.save('Laporan_AHP_Multi_Expert.pdf');
         }
     </script>
