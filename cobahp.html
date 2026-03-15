@@ -212,17 +212,28 @@
         }
 
         function renderManualMatrices() {
+            const eIdx = state.activeExpertIdx;
             let html = `<div class="bg-white p-6 rounded-2xl border shadow-sm">
-                <h3 class="font-bold text-indigo-600 mb-4 uppercase text-sm tracking-widest">${state.experts[state.activeExpertIdx]} : Perbandingan Kriteria</h3>
-                ${createTableHTML(`e${state.activeExpertIdx}_c`, state.criteria)}
+                <h3 class="font-bold text-indigo-600 mb-4 uppercase text-sm tracking-widest">${state.experts[eIdx]} : Perbandingan Kriteria</h3>
+                ${createTableHTML(`e${eIdx}_c`, state.criteria)}
+                <div class="mt-4 border-t pt-4">
+                    <p class="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">&#x21BA; Estimasi Skor Interview dari Matriks</p>
+                    <div id="backtrack_crit_${eIdx}"><span class="text-xs text-slate-400">Isi matriks untuk melihat estimasi skor.</span></div>
+                </div>
             </div>`;
             state.criteria.forEach((crit, cI) => {
                 html += `<div class="bg-white p-6 rounded-2xl border shadow-sm">
-                    <h3 class="font-bold text-emerald-600 mb-4 uppercase text-sm tracking-widest">${state.experts[state.activeExpertIdx]} : Alternatif untuk ${crit}</h3>
-                    ${createTableHTML(`e${state.activeExpertIdx}_a${cI}`, state.alternatives)}
+                    <h3 class="font-bold text-emerald-600 mb-4 uppercase text-sm tracking-widest">${state.experts[eIdx]} : Alternatif untuk ${crit}</h3>
+                    ${createTableHTML(`e${eIdx}_a${cI}`, state.alternatives)}
+                    <div class="mt-4 border-t pt-4">
+                        <p class="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">&#x21BA; Estimasi Skor Interview dari Matriks</p>
+                        <div id="backtrack_alt_${eIdx}_${cI}"><span class="text-xs text-slate-400">Isi matriks untuk melihat estimasi skor.</span></div>
+                    </div>
                 </div>`;
             });
             document.getElementById('matrixArea').innerHTML = html;
+            // Render estimasi awal jika judgments sudah ada
+            backtrackAllScores();
         }
 
         // ===== SCORING MODE =====
@@ -406,6 +417,73 @@
         function saveVal(id, val, invId) {
             state.judgments[id] = parseFloat(val) || 1;
             document.getElementById(invId).innerText = (1 / parseFloat(val)).toFixed(2);
+            // Backtrack: perbarui estimasi skor interview dari matriks
+            const parts = id.split('_');
+            // id format: e{eIdx}_c_{i}_{j} atau e{eIdx}_a{cIdx}_{i}_{j}
+            const eIdx = parseInt(parts[0].replace('e', ''));
+            if (parts[1] === 'c') {
+                backtrackScores(`e${eIdx}_c`, state.criteria, `backtrack_crit_${eIdx}`);
+            } else {
+                const cIdx = parseInt(parts[1].replace('a', ''));
+                backtrackScores(`e${eIdx}_a${cIdx}`, state.alternatives, `backtrack_alt_${eIdx}_${cIdx}`);
+            }
+        }
+
+        // Hitung estimasi skor 1-10 dari matriks via geometric mean baris, normalisasi ke [1,10]
+        function backtrackScores(prefix, items, containerId) {
+            const n = items.length;
+            // Geometric mean tiap baris = estimasi bobot relatif
+            const geoMeans = items.map((_, i) => {
+                let product = 1;
+                items.forEach((_, j) => {
+                    let v;
+                    if (i === j) v = 1;
+                    else if (i < j) v = state.judgments[`${prefix}_${i}_${j}`] || 1;
+                    else v = 1 / (state.judgments[`${prefix}_${j}_${i}`] || 1);
+                    product *= v;
+                });
+                return Math.pow(product, 1 / n);
+            });
+
+            const minG = Math.min(...geoMeans);
+            const maxG = Math.max(...geoMeans);
+            const range = maxG - minG || 1;
+
+            // Normalisasi ke skala 1–10
+            const scores = geoMeans.map(g => +(1 + ((g - minG) / range) * 9).toFixed(2));
+
+            // Update state.scores dengan nilai backtrack (hanya jika mode manual)
+            if (state.inputMode === 'manual') {
+                items.forEach((_, i) => {
+                    state.scores[`${prefix}_${i}`] = scores[i];
+                });
+            }
+
+            // Render estimasi di container
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            let html = `<div class="flex flex-wrap gap-2 mt-2">`;
+            items.forEach((name, i) => {
+                const pct = ((scores[i] - 1) / 9 * 100).toFixed(0);
+                html += `<div class="flex items-center gap-2 bg-white border rounded-xl px-3 py-2 text-xs">
+                    <span class="text-slate-500 font-medium">${name}</span>
+                    <div class="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                        <div class="h-full bg-amber-400 rounded-full" style="width:${pct}%"></div>
+                    </div>
+                    <span class="font-bold text-amber-600 font-mono">${scores[i]}</span>
+                </div>`;
+            });
+            container.innerHTML = html + `</div>`;
+        }
+
+        // Jalankan backtrack untuk semua matriks expert aktif
+        function backtrackAllScores() {
+            const eIdx = state.activeExpertIdx;
+            backtrackScores(`e${eIdx}_c`, state.criteria, `backtrack_crit_${eIdx}`);
+            state.criteria.forEach((_, cIdx) => {
+                backtrackScores(`e${eIdx}_a${cIdx}`, state.alternatives, `backtrack_alt_${eIdx}_${cIdx}`);
+            });
         }
 
         function getFullMatrix(prefix, size) {
