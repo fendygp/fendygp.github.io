@@ -55,7 +55,21 @@
         </section>
 
         <section id="panel-judgments" class="panel space-y-8">
-            <div class="flex flex-wrap gap-2 mb-4" id="expertTabs"></div>
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+                <div class="flex flex-wrap gap-2" id="expertTabs"></div>
+                <div class="flex gap-2">
+                    <button onclick="exportCSV()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
+                        Export CSV
+                    </button>
+                    <label class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium hover:bg-indigo-100 transition cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12"/></svg>
+                        Import CSV
+                        <input type="file" accept=".csv" class="hidden" onchange="importCSV(event)">
+                    </label>
+                </div>
+            </div>
+            <div id="csv-import-msg"></div>
             <div id="matrixArea" class="space-y-10"></div>
             <button onclick="calculateGroupResult()" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-bold text-xl shadow-xl hover:bg-emerald-700">HITUNG HASIL KONSENSUS</button>
         </section>
@@ -367,6 +381,173 @@
             document.querySelectorAll('.expert-detail-panel').forEach((panel, i) => {
                 panel.classList.toggle('active', i === idx);
             });
+        }
+
+        // ===== CSV EXPORT =====
+        function exportCSV() {
+            let rows = [];
+            // Header metadata
+            rows.push(['#META', 'experts', state.experts.length]);
+            rows.push(['#META', 'criteria', state.criteria.join('|')]);
+            rows.push(['#META', 'alternatives', state.alternatives.join('|')]);
+            rows.push([]);
+
+            state.experts.forEach((expName, eIdx) => {
+                // Kriteria matrix
+                rows.push([`# ${expName} - Perbandingan Kriteria`]);
+                const critHeader = [''].concat(state.criteria);
+                rows.push(critHeader);
+                state.criteria.forEach((rowCrit, i) => {
+                    const row = [rowCrit];
+                    state.criteria.forEach((_, j) => {
+                        if (i === j) row.push(1);
+                        else if (i < j) row.push(state.judgments[`e${eIdx}_c_${i}_${j}`] || 1);
+                        else row.push(''); // inverse — dikosongkan, dihitung saat import
+                    });
+                    rows.push(row);
+                });
+                rows.push([]);
+
+                // Alternatif per kriteria
+                state.criteria.forEach((crit, cIdx) => {
+                    rows.push([`# ${expName} - Alternatif untuk ${crit}`]);
+                    const altHeader = [''].concat(state.alternatives);
+                    rows.push(altHeader);
+                    state.alternatives.forEach((rowAlt, i) => {
+                        const row = [rowAlt];
+                        state.alternatives.forEach((_, j) => {
+                            if (i === j) row.push(1);
+                            else if (i < j) row.push(state.judgments[`e${eIdx}_a${cIdx}_${i}_${j}`] || 1);
+                            else row.push('');
+                        });
+                        rows.push(row);
+                    });
+                    rows.push([]);
+                });
+            });
+
+            const csvContent = rows.map(r => r.map(cell => {
+                const s = String(cell);
+                return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+            }).join(',')).join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Data_AHP_Input.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ===== CSV IMPORT =====
+        function importCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const lines = e.target.result.split('\n').map(l => l.trimEnd());
+                    let newExperts = [], newCriteria = [], newAlternatives = [];
+                    let newJudgments = {};
+                    let currentExpertIdx = -1, currentCritIdx = -1;
+                    let mode = null; // 'crit' | 'alt'
+                    let rowIdx = 0;
+
+                    const parseRow = (line) => {
+                        const cells = [];
+                        let inQuote = false, cur = '';
+                        for (let c of line) {
+                            if (c === '"') { inQuote = !inQuote; }
+                            else if (c === ',' && !inQuote) { cells.push(cur); cur = ''; }
+                            else cur += c;
+                        }
+                        cells.push(cur);
+                        return cells;
+                    };
+
+                    for (let line of lines) {
+                        if (!line.trim()) { rowIdx = 0; continue; }
+                        const cells = parseRow(line);
+
+                        // META
+                        if (cells[0] === '#META') {
+                            if (cells[1] === 'experts') newExperts = Array.from({length: parseInt(cells[2])}, (_, i) => `Expert ${i+1}`);
+                            if (cells[1] === 'criteria') newCriteria = cells[2].split('|').map(s => s.trim());
+                            if (cells[1] === 'alternatives') newAlternatives = cells[2].split('|').map(s => s.trim());
+                            continue;
+                        }
+
+                        // Section header
+                        if (cells[0].startsWith('#')) {
+                            const header = cells[0];
+                            rowIdx = 0;
+                            // Detect expert index
+                            const expMatch = header.match(/Expert (\d+)/);
+                            if (expMatch) currentExpertIdx = parseInt(expMatch[1]) - 1;
+
+                            if (header.includes('Perbandingan Kriteria')) {
+                                mode = 'crit'; currentCritIdx = -1;
+                            } else if (header.includes('Alternatif untuk')) {
+                                mode = 'alt';
+                                const critName = header.split('Alternatif untuk ')[1].trim();
+                                currentCritIdx = newCriteria.indexOf(critName);
+                            }
+                            continue;
+                        }
+
+                        rowIdx++;
+                        if (rowIdx === 1) continue; // header row (labels)
+
+                        const dataRowIdx = rowIdx - 2; // 0-based row of matrix
+                        if (mode === 'crit') {
+                            cells.slice(1).forEach((val, j) => {
+                                if (j > dataRowIdx && val !== '' && val !== undefined) {
+                                    const key = `e${currentExpertIdx}_c_${dataRowIdx}_${j}`;
+                                    newJudgments[key] = parseFloat(val) || 1;
+                                }
+                            });
+                        } else if (mode === 'alt' && currentCritIdx >= 0) {
+                            cells.slice(1).forEach((val, j) => {
+                                if (j > dataRowIdx && val !== '' && val !== undefined) {
+                                    const key = `e${currentExpertIdx}_a${currentCritIdx}_${dataRowIdx}_${j}`;
+                                    newJudgments[key] = parseFloat(val) || 1;
+                                }
+                            });
+                        }
+                    }
+
+                    if (!newCriteria.length || !newAlternatives.length || !newExperts.length) {
+                        throw new Error("Format CSV tidak valid atau data tidak lengkap.");
+                    }
+
+                    // Terapkan ke state
+                    state.experts = newExperts;
+                    state.criteria = newCriteria;
+                    state.alternatives = newAlternatives;
+                    state.judgments = newJudgments;
+                    state.activeExpertIdx = 0;
+
+                    renderTabs();
+                    renderMatrices();
+
+                    document.getElementById('csv-import-msg').innerHTML = `
+                        <div class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            CSV berhasil diimport: ${newExperts.length} expert, ${newCriteria.length} kriteria, ${newAlternatives.length} alternatif.
+                        </div>`;
+                    setTimeout(() => document.getElementById('csv-import-msg').innerHTML = '', 4000);
+
+                } catch (err) {
+                    document.getElementById('csv-import-msg').innerHTML = `
+                        <div class="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            Gagal import: ${err.message}
+                        </div>`;
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
         }
 
         async function exportPDF() {
