@@ -51,7 +51,34 @@
                     <input type="text" id="altList" class="w-full p-3 border rounded-xl" placeholder="Produk A, Produk B, Produk C">
                 </div>
             </div>
-            <button onclick="initSystem()" class="mt-8 w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition">Siapkan Matriks Penilaian</button>
+
+            <!-- Pilihan metode input -->
+            <div class="mt-8">
+                <p class="font-bold text-slate-700 mb-3">Pilih Metode Input:</p>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <button onclick="initSystem('manual')"
+                        class="flex flex-col items-start gap-2 p-5 rounded-2xl border-2 border-slate-200 hover:border-slate-800 hover:bg-slate-50 transition text-left group">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center text-slate-700 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18M10 3v18M14 3v18"/></svg>
+                            </div>
+                            <span class="font-bold text-slate-800">Matriks Manual</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Isi langsung nilai perbandingan berpasangan (a<sub>ij</sub>) pada tabel matriks. Cocok untuk expert yang sudah familiar dengan AHP.</p>
+                    </button>
+                    <button onclick="initSystem('scoring')"
+                        class="flex flex-col items-start gap-2 p-5 rounded-2xl border-2 border-amber-200 hover:border-amber-500 hover:bg-amber-50 transition text-left group">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-amber-100 group-hover:bg-amber-200 flex items-center justify-center text-amber-700 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                            </div>
+                            <span class="font-bold text-amber-700">Scoring Interview</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Expert memberi skor 1–10 per item. Matriks perbandingan dihitung otomatis dari rasio skor. Lebih mudah untuk responden awam.</p>
+                    </button>
+                </div>
+            </div>
+
             <div class="mt-4 flex items-center justify-center gap-2 text-sm text-slate-400">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z"/></svg>
                 Atau langsung
@@ -61,61 +88,33 @@
         </section>
 
         <section id="panel-judgments" class="panel space-y-6">
-            <!-- Toolbar: tabs + mode toggle + csv -->
+            <!-- Toolbar -->
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <div class="flex flex-wrap gap-2" id="expertTabs"></div>
-                <div class="flex flex-wrap gap-2 items-center">
-                    <!-- Mode Toggle -->
-                    <div class="flex rounded-xl border overflow-hidden text-sm font-medium">
-                        <button id="btn-mode-manual" onclick="setInputMode('manual')"
-                            class="px-4 py-2 bg-slate-800 text-white transition">
-                            Matriks Manual
-                        </button>
-                        <button id="btn-mode-scoring" onclick="setInputMode('scoring')"
-                            class="px-4 py-2 bg-white text-slate-500 hover:bg-slate-50 transition">
-                            Scoring Interview
-                        </button>
-                    </div>
-                    <button onclick="exportCSV()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
-                        Export CSV
-                    </button>
-                    <label class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium hover:bg-indigo-100 transition cursor-pointer">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12"/></svg>
-                        Import CSV
-                        <input type="file" accept=".csv" class="hidden" onchange="importCSV(event)">
-                    </label>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex flex-wrap gap-2" id="expertTabs"></div>
+                    <!-- Badge metode aktif -->
+                    <div id="method-badge"></div>
                 </div>
-            </div>
-
-            <!-- Info mode scoring -->
-            <div id="scoring-info" class="hidden bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-sm text-amber-800">
-                <p class="font-bold mb-1">Mode Scoring Interview</p>
-                <p>Isi <strong>skor mentah (1–10)</strong> untuk setiap item. Nilai perbandingan matriks dihitung otomatis dari rasio antar skor (<code>skor_i / skor_j</code>). Skor lebih tinggi = lebih penting/lebih baik.</p>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <div id="csv-toolbar" class="flex gap-2">
+                        <button onclick="exportCSV()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
+                            Export CSV
+                        </button>
+                        <label class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium hover:bg-indigo-100 transition cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12"/></svg>
+                            Import CSV
+                            <input type="file" accept=".csv" class="hidden" onchange="importCSV(event)">
+                        </label>
+                    </div>
+                    <button onclick="backToModel()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-500 text-sm font-medium hover:bg-slate-50 transition">
+                        Ganti Metode
+                    </button>
+                </div>
             </div>
 
             <div id="csv-import-msg"></div>
             <div id="matrixArea" class="space-y-10"></div>
-
-            <!-- Pilihan sumber kalkulasi -->
-            <div class="bg-white border rounded-2xl p-5 space-y-3">
-                <p class="font-bold text-slate-700 text-sm">Sumber data untuk kalkulasi:</p>
-                <div class="flex flex-wrap gap-3">
-                    <label class="flex items-center gap-2 cursor-pointer select-none">
-                        <input type="radio" name="calcSource" value="manual" checked onchange="state.calcSource=this.value"
-                            class="accent-slate-800 w-4 h-4">
-                        <span class="text-sm font-medium text-slate-700">Matriks Manual</span>
-                        <span class="text-xs text-slate-400">(nilai yang diisi di tabel perbandingan)</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer select-none">
-                        <input type="radio" name="calcSource" value="scoring" onchange="state.calcSource=this.value"
-                            class="accent-amber-500 w-4 h-4">
-                        <span class="text-sm font-medium text-amber-700">Scoring Interview</span>
-                        <span class="text-xs text-slate-400">(rasio dari skor 1–10 yang diisi expert)</span>
-                    </label>
-                </div>
-            </div>
-
             <button onclick="calculateGroupResult()" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-bold text-xl shadow-xl hover:bg-emerald-700">HITUNG HASIL KONSENSUS</button>
         </section>
 
@@ -185,6 +184,7 @@
             judgments: {},
             scores: {},       // skor yang diisi user di mode scoring
             scoresUser: {},   // flag: key ini diisi user sendiri (bukan backtrack)
+            notes: {},        // catatan/alasan interview per sel (iv_note_c{cIdx}_a{aIdx}_e{eIdx})
             inputMode: 'manual',
             calcSource: 'manual'  // 'manual' | 'scoring' — sumber untuk kalkulasi
         };
@@ -196,15 +196,49 @@
             window.scrollTo(0, 0);
         }
 
-        function initSystem() {
+        function initSystem(mode) {
             const nExp = parseInt(document.getElementById('numExperts').value);
             state.criteria = document.getElementById('critList').value.split(',').map(s => s.trim()).filter(s => s);
             state.alternatives = document.getElementById('altList').value.split(',').map(s => s.trim()).filter(s => s);
             if (state.criteria.length < 2 || state.alternatives.length < 2) return alert("Kriteria & Alternatif minimal 2!");
             state.experts = Array.from({length: nExp}, (_, i) => `Expert ${i+1}`);
+            state.inputMode = mode;
+            state.calcSource = mode;  // otomatis ikut metode yang dipilih
+            state.judgments = {};
+            state.scores = {};
+            state.scoresUser = {};
+            state.notes = {};
+            state.activeExpertIdx = 0;
             renderTabs();
+            renderMethodBadge();
             renderMatrices();
             showPanel('judgments');
+        }
+
+        function backToModel() {
+            showPanel('model');
+        }
+
+        function renderMethodBadge() {
+            const badge = document.getElementById('method-badge');
+            const csvToolbar = document.getElementById('csv-toolbar');
+            const expertTabsEl = document.getElementById('expertTabs');
+            if (!badge) return;
+            if (state.inputMode === 'scoring') {
+                badge.innerHTML = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                    Scoring Interview
+                </span>`;
+                if (csvToolbar) csvToolbar.style.display = 'none';
+                if (expertTabsEl) expertTabsEl.style.display = 'none';
+            } else {
+                badge.innerHTML = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18M10 3v18M14 3v18"/></svg>
+                    Matriks Manual
+                </span>`;
+                if (csvToolbar) csvToolbar.style.display = '';
+                if (expertTabsEl) expertTabsEl.style.display = '';
+            }
         }
 
         function renderTabs() {
@@ -221,16 +255,6 @@
             renderMatrices();
         }
 
-        function setInputMode(mode) {
-            state.inputMode = mode;
-            document.getElementById('btn-mode-manual').className =
-                `px-4 py-2 transition ${mode === 'manual' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`;
-            document.getElementById('btn-mode-scoring').className =
-                `px-4 py-2 transition ${mode === 'scoring' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`;
-            document.getElementById('scoring-info').classList.toggle('hidden', mode !== 'scoring');
-            renderMatrices();
-        }
-
         function renderMatrices() {
             if (state.inputMode === 'scoring') {
                 renderScoringMatrices();
@@ -244,23 +268,37 @@
             let html = `<div class="bg-white p-6 rounded-2xl border shadow-sm">
                 <h3 class="font-bold text-indigo-600 mb-4 uppercase text-sm tracking-widest">${state.experts[eIdx]} : Perbandingan Kriteria</h3>
                 ${createTableHTML(`e${eIdx}_c`, state.criteria)}
-                <div class="mt-4 border-t pt-4">
-                    <p class="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">&#x21BA; Estimasi Skor Interview dari Matriks</p>
-                    <div id="backtrack_crit_${eIdx}"><span class="text-xs text-slate-400">Isi matriks untuk melihat estimasi skor.</span></div>
-                </div>
             </div>`;
             state.criteria.forEach((crit, cI) => {
                 html += `<div class="bg-white p-6 rounded-2xl border shadow-sm">
                     <h3 class="font-bold text-emerald-600 mb-4 uppercase text-sm tracking-widest">${state.experts[eIdx]} : Alternatif untuk ${crit}</h3>
                     ${createTableHTML(`e${eIdx}_a${cI}`, state.alternatives)}
-                    <div class="mt-4 border-t pt-4">
-                        <p class="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">&#x21BA; Estimasi Skor Interview dari Matriks</p>
-                        <div id="backtrack_alt_${eIdx}_${cI}"><span class="text-xs text-slate-400">Isi matriks untuk melihat estimasi skor.</span></div>
-                    </div>
                 </div>`;
             });
+            // Tabel estimasi backtrack di akhir
+            html += `<div class="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+                <div class="px-6 py-4 border-b border-amber-200 flex items-center gap-2">
+                    <span class="text-amber-600 text-lg">↺</span>
+                    <div>
+                        <h3 class="font-bold text-amber-700 text-sm">Estimasi Skor Interview dari Matriks</h3>
+                        <p class="text-xs text-amber-600 mt-0.5">Skor 0–100 yang konsisten dengan nilai matriks yang diisi. Hanya estimasi — bukan nilai asli interview.</p>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-slate-700 text-white">
+                                <th class="px-4 py-3 text-left font-semibold border-r border-slate-600">Provider</th>
+                                ${state.criteria.map(c => `<th class="px-4 py-3 text-center font-semibold">${c}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody id="backtrack-table-body-${eIdx}">
+                            <tr><td colspan="${state.criteria.length + 1}" class="px-4 py-3 text-slate-400 text-xs text-center">Isi matriks untuk melihat estimasi skor.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
             document.getElementById('matrixArea').innerHTML = html;
-            // Render estimasi awal jika judgments sudah ada
             backtrackAllScores();
         }
 
@@ -308,122 +346,145 @@
             Object.keys(state.scoresUser).forEach(key => syncOneScoreToJudgment(key));
         }
 
-        function scoringInputRow(label, key, colorRing) {
-            const val = state.scores[key] || '';
-            return `<tr>
-                <td class="py-2 pr-4 font-semibold text-slate-700 w-40">${label}</td>
-                <td class="py-2 pr-4">
-                    <input type="number" min="1" max="10" step="0.5" value="${val}" placeholder="1–10"
-                        oninput="saveScore('${key}', this.value)"
-                        class="w-24 p-2 border rounded-lg outline-none focus:ring-2 ${colorRing} font-bold text-center">
-                </td>
-                <td class="py-2 text-slate-400 text-xs" id="bar_${key}">
-                    ${val ? renderScoreBar(parseFloat(val)) : '—'}
-                </td>
-            </tr>`;
+        // Simpan skor interview (key format: iv_c{cIdx}_a{aIdx}_e{eIdx} atau iv_w{cIdx}_e{eIdx})
+        function saveInterviewScore(key, val) {
+            const v = Math.min(100, Math.max(0, parseFloat(val) || 0));
+            state.scores[key] = v;
+            state.scoresUser[key] = true;
+            syncInterviewToJudgments();
         }
 
-        function renderScoreBar(val) {
-            const pct = Math.min(Math.max((val / 10) * 100, 0), 100).toFixed(0);
-            return `<div class="flex items-center gap-2">
-                <div class="w-28 bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div class="h-full bg-indigo-400 rounded-full" style="width:${pct}%"></div>
-                </div>
-                <span class="font-mono text-xs">${val}</span>
-            </div>`;
+        // Simpan catatan/alasan interview
+        function saveInterviewNote(key, val) {
+            state.notes[key] = val;
         }
 
-        function updateScorePreview() {
-            // Update bar visual & preview matriks tanpa full re-render (avoid losing focus)
-            const eIdx = state.activeExpertIdx;
-            // Update bars
-            [...state.criteria.map((_, i) => `e${eIdx}_c_${i}`),
-             ...state.criteria.flatMap((_, cIdx) => state.alternatives.map((_, i) => `e${eIdx}_a${cIdx}_${i}`))
-            ].forEach(key => {
-                const el = document.getElementById(`bar_${key}`);
-                const val = state.scores[key];
-                if (el) el.innerHTML = val ? renderScoreBar(parseFloat(val)) : '—';
-            });
-            // Update preview matriks
-            updatePreviewTables();
-        }
-
-        function updatePreviewTables() {
-            const eIdx = state.activeExpertIdx;
-            // Kriteria preview
-            renderPreviewTable(`preview_crit_${eIdx}`, `e${eIdx}_c`, state.criteria);
-            // Alternatif per kriteria preview
-            state.criteria.forEach((_, cIdx) => {
-                renderPreviewTable(`preview_alt_${eIdx}_${cIdx}`, `e${eIdx}_a${cIdx}`, state.alternatives);
-            });
-        }
-
-        function renderPreviewTable(containerId, prefix, items) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            const n = items.length;
-            let html = `<div class="overflow-x-auto mt-3"><table class="w-full text-xs text-center border-collapse">
-                <thead><tr class="bg-slate-100"><th class="p-1.5 text-left">vs</th>`;
-            items.forEach(it => html += `<th class="p-1.5 font-normal text-slate-500">${it}</th>`);
-            html += `</tr></thead><tbody>`;
-            items.forEach((row, i) => {
-                html += `<tr class="border-t border-slate-100"><td class="p-1.5 font-semibold text-left bg-slate-50">${row}</td>`;
-                items.forEach((_, j) => {
-                    let val, cls = 'text-slate-400';
-                    if (i === j) { val = '1'; }
-                    else if (i < j) {
-                        const sA = state.scores[`${prefix}_${i}`] || 1;
-                        const sB = state.scores[`${prefix}_${j}`] || 1;
-                        val = (sA / sB).toFixed(2);
-                        cls = parseFloat(val) >= 1 ? 'text-indigo-600 font-bold' : 'text-emerald-600 font-bold';
-                    } else {
-                        const sA = state.scores[`${prefix}_${j}`] || 1;
-                        const sB = state.scores[`${prefix}_${i}`] || 1;
-                        val = (sA / sB).toFixed(2);
-                        cls = 'text-slate-400';
-                    }
-                    html += `<td class="p-1.5 ${cls}">${val}</td>`;
+        // Konversi tabel interview → judgments AHP (semua expert sekaligus)
+        // Key: iv_c{cIdx}_a{aIdx}_e{eIdx} untuk alternatif, iv_w{cIdx}_e{eIdx} untuk bobot kriteria
+        function syncInterviewToJudgments() {
+            state.experts.forEach((_, eIdx) => {
+                // Bobot kriteria
+                state.criteria.forEach((_, i) => {
+                    state.criteria.forEach((_, j) => {
+                        if (i >= j) return;
+                        const wI = state.scores[`iv_w${i}_e${eIdx}`] || 1;
+                        const wJ = state.scores[`iv_w${j}_e${eIdx}`] || 1;
+                        state.judgments[`e${eIdx}_c_${i}_${j}`] = wI / wJ;
+                    });
                 });
-                html += `</tr>`;
+                // Alternatif per kriteria
+                state.criteria.forEach((_, cIdx) => {
+                    state.alternatives.forEach((_, i) => {
+                        state.alternatives.forEach((_, j) => {
+                            if (i >= j) return;
+                            const sI = state.scores[`iv_c${cIdx}_a${i}_e${eIdx}`] || 1;
+                            const sJ = state.scores[`iv_c${cIdx}_a${j}_e${eIdx}`] || 1;
+                            state.judgments[`e${eIdx}_a${cIdx}_${i}_${j}`] = sI / sJ;
+                        });
+                    });
+                });
             });
-            container.innerHTML = html + `</tbody></table></div>`;
         }
 
+        // Render scoring interview: per kriteria, semua expert dalam satu tabel
         function renderScoringMatrices() {
-            const eIdx = state.activeExpertIdx;
             let html = '';
 
-            // --- Bobot Kriteria ---
-            html += `<div class="bg-white p-6 rounded-2xl border shadow-sm">
-                <h3 class="font-bold text-indigo-600 mb-1 uppercase text-sm tracking-widest">${state.experts[eIdx]} : Skor Kepentingan Kriteria</h3>
-                <p class="text-slate-400 text-xs mb-4">Isi skor 1–10 seberapa penting kriteria ini bagi expert. Matriks perbandingan dihitung otomatis.</p>
-                <table class="w-full text-sm"><tbody>
-                    ${state.criteria.map((c, i) => scoringInputRow(c, `e${eIdx}_c_${i}`, 'focus:ring-indigo-400')).join('')}
-                </tbody></table>
-                <div class="mt-4 border-t pt-4">
-                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Preview Matriks Perbandingan Kriteria</p>
-                    <div id="preview_crit_${eIdx}"></div>
+            // Header instruksi
+            html += `<div class="bg-indigo-50 border border-indigo-200 rounded-2xl px-6 py-4 flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-indigo-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z"/></svg>
+                <div>
+                    <p class="font-semibold text-indigo-800 text-sm">Petunjuk Pengisian Interview Scoring</p>
+                    <p class="text-xs text-indigo-600 mt-1">Isi skor <strong>0–100</strong> untuk setiap alternatif pada masing-masing kriteria. Sertakan <em>alasan singkat</em> kenapa memberi skor tersebut. Bobot kepentingan kriteria diisi di baris <span class="font-bold text-amber-600">Bobot Kriteria</span>.</p>
                 </div>
             </div>`;
 
-            // --- Skor Alternatif per Kriteria ---
+            // Satu tabel per kriteria
             state.criteria.forEach((crit, cIdx) => {
-                html += `<div class="bg-white p-6 rounded-2xl border shadow-sm">
-                    <h3 class="font-bold text-emerald-600 mb-1 uppercase text-sm tracking-widest">${state.experts[eIdx]} : Skor Alternatif untuk "${crit}"</h3>
-                    <p class="text-slate-400 text-xs mb-4">Isi skor 1–10 seberapa baik setiap alternatif dalam kriteria ini.</p>
-                    <table class="w-full text-sm"><tbody>
-                        ${state.alternatives.map((a, i) => scoringInputRow(a, `e${eIdx}_a${cIdx}_${i}`, 'focus:ring-emerald-400')).join('')}
-                    </tbody></table>
-                    <div class="mt-4 border-t pt-4">
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Preview Matriks Perbandingan Alternatif — ${crit}</p>
-                        <div id="preview_alt_${eIdx}_${cIdx}"></div>
+                // Warna header berbeda per kriteria
+                const colors = ['bg-indigo-700','bg-emerald-700','bg-violet-700','bg-cyan-700','bg-rose-700','bg-amber-700','bg-teal-700'];
+                const color = colors[cIdx % colors.length];
+
+                // Header kolom expert
+                const expertHeaders = state.experts.map(e =>
+                    `<th class="px-3 py-3 text-center font-semibold min-w-[160px]" colspan="2">${e}</th>`
+                ).join('');
+                const subHeaders = state.experts.map(() =>
+                    `<th class="px-3 py-2 text-center font-normal text-xs opacity-80 border-l border-white/20">Skor (0–100)</th>
+                     <th class="px-3 py-2 text-center font-normal text-xs opacity-80 border-r border-white/20">Alasan</th>`
+                ).join('');
+
+                // Baris alternatif
+                const altRows = state.alternatives.map((alt, aIdx) => {
+                    const expertCells = state.experts.map((_, eIdx) => {
+                        const scoreKey = `iv_c${cIdx}_a${aIdx}_e${eIdx}`;
+                        const noteKey = `iv_note_c${cIdx}_a${aIdx}_e${eIdx}`;
+                        const scoreVal = state.scores[scoreKey] !== undefined ? state.scores[scoreKey] : '';
+                        const noteVal = state.notes[noteKey] || '';
+                        return `<td class="p-1.5 border-l border-slate-200 text-center">
+                            <input type="number" min="0" max="100" step="1" value="${scoreVal}" placeholder="0"
+                                oninput="saveInterviewScore('${scoreKey}', this.value)"
+                                class="w-full p-2 text-center border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-400 font-bold text-sm">
+                        </td>
+                        <td class="p-1.5 border-r border-slate-200">
+                            <input type="text" value="${noteVal}" placeholder="Alasan singkat..."
+                                oninput="saveInterviewNote('${noteKey}', this.value)"
+                                class="w-full p-2 text-xs border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-slate-300 text-slate-600 min-w-[120px]">
+                        </td>`;
+                    }).join('');
+                    return `<tr class="border-b border-slate-100 hover:bg-slate-50">
+                        <td class="px-4 py-3 font-semibold text-slate-700 bg-slate-50 whitespace-nowrap border-r border-slate-200 sticky left-0">${alt}</td>
+                        ${expertCells}
+                    </tr>`;
+                }).join('');
+
+                // Baris bobot kriteria
+                const weightCells = state.experts.map((_, eIdx) => {
+                    const key = `iv_w${cIdx}_e${eIdx}`;
+                    const val = state.scores[key] !== undefined ? state.scores[key] : '';
+                    return `<td class="p-1.5 border-l border-amber-300 text-center" colspan="2">
+                        <input type="number" min="0" max="100" step="1" value="${val}" placeholder="0"
+                            oninput="saveInterviewScore('${key}', this.value)"
+                            class="w-full p-2 text-center border border-amber-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-400 font-bold text-sm bg-amber-50 text-amber-700">
+                    </td>`;
+                }).join('');
+
+                html += `<div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b flex items-center gap-3 ${color} text-white">
+                        <span class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold flex-shrink-0">${cIdx + 1}</span>
+                        <div>
+                            <h3 class="font-bold text-base">${crit}</h3>
+                            <p class="text-xs opacity-75 mt-0.5">Penilaian alternatif berdasarkan kriteria <strong>${crit}</strong> — skor 0 (sangat buruk) hingga 100 (sangat baik)</p>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="text-white text-sm ${color}">
+                                    <th class="px-4 py-2.5 text-left font-semibold border-r border-white/20 sticky left-0 ${color}">Alternatif</th>
+                                    ${expertHeaders}
+                                </tr>
+                                <tr class="${color} text-white border-t border-white/20">
+                                    <th class="px-4 py-1.5 sticky left-0 ${color}"></th>
+                                    ${subHeaders}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${altRows}
+                                <tr class="bg-amber-50 border-t-2 border-amber-300">
+                                    <td class="px-4 py-3 font-bold text-amber-700 border-r border-amber-200 whitespace-nowrap sticky left-0 bg-amber-50">
+                                        Bobot Kriteria
+                                        <span class="block text-xs font-normal text-amber-500">Kepentingan ${crit}</span>
+                                    </td>
+                                    ${weightCells}
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>`;
             });
 
             document.getElementById('matrixArea').innerHTML = html;
-            // Render preview awal berdasarkan skor yang sudah ada
-            updatePreviewTables();
         }
 
         function createTableHTML(prefix, items) {
@@ -452,22 +513,12 @@
         function saveVal(id, val, invId) {
             state.judgments[id] = parseFloat(val) || 1;
             document.getElementById(invId).innerText = (1 / parseFloat(val)).toFixed(2);
-            // Backtrack: perbarui estimasi skor interview dari matriks
-            const parts = id.split('_');
-            // id format: e{eIdx}_c_{i}_{j} atau e{eIdx}_a{cIdx}_{i}_{j}
-            const eIdx = parseInt(parts[0].replace('e', ''));
-            if (parts[1] === 'c') {
-                backtrackScores(`e${eIdx}_c`, state.criteria, `backtrack_crit_${eIdx}`);
-            } else {
-                const cIdx = parseInt(parts[1].replace('a', ''));
-                backtrackScores(`e${eIdx}_a${cIdx}`, state.alternatives, `backtrack_alt_${eIdx}_${cIdx}`);
-            }
+            backtrackAllScores();
         }
 
-        // Hitung estimasi skor 1-10 dari matriks via geometric mean baris, normalisasi ke [1,10]
-        function backtrackScores(prefix, items, containerId) {
+        // Hitung geometric mean per baris → normalisasi ke 0–100, kembalikan array skor
+        function computeBacktrackScores(prefix, items) {
             const n = items.length;
-            // Geometric mean tiap baris = estimasi bobot relatif
             const geoMeans = items.map((_, i) => {
                 let product = 1;
                 items.forEach((_, j) => {
@@ -479,46 +530,63 @@
                 });
                 return Math.pow(product, 1 / n);
             });
-
             const minG = Math.min(...geoMeans);
             const maxG = Math.max(...geoMeans);
             const range = maxG - minG || 1;
-
-            // Normalisasi ke skala 1–10
-            const scores = geoMeans.map(g => +(1 + ((g - minG) / range) * 9).toFixed(2));
-
-            // Update state.scores dengan nilai backtrack — TANPA set scoresUser
-            // sehingga tidak dianggap sebagai input user dan tidak overwrite judgments manual
-            items.forEach((_, i) => {
-                state.scores[`${prefix}_${i}`] = scores[i];
-                // scoresUser TIDAK diset — ini hanya estimasi backtrack
-            });
-
-            // Render estimasi di container
-            const container = document.getElementById(containerId);
-            if (!container) return;
-
-            let html = `<div class="flex flex-wrap gap-2 mt-2">`;
-            items.forEach((name, i) => {
-                const pct = ((scores[i] - 1) / 9 * 100).toFixed(0);
-                html += `<div class="flex items-center gap-2 bg-white border rounded-xl px-3 py-2 text-xs">
-                    <span class="text-slate-500 font-medium">${name}</span>
-                    <div class="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                        <div class="h-full bg-amber-400 rounded-full" style="width:${pct}%"></div>
-                    </div>
-                    <span class="font-bold text-amber-600 font-mono">${scores[i]}</span>
-                </div>`;
-            });
-            container.innerHTML = html + `</div>`;
+            return geoMeans.map(g => +(((g - minG) / range) * 100).toFixed(1));
         }
 
-        // Jalankan backtrack untuk semua matriks expert aktif
+        // Render tabel estimasi backtrack ke unified table (Provider × Kriteria, 0–100)
         function backtrackAllScores() {
             const eIdx = state.activeExpertIdx;
-            backtrackScores(`e${eIdx}_c`, state.criteria, `backtrack_crit_${eIdx}`);
-            state.criteria.forEach((_, cIdx) => {
-                backtrackScores(`e${eIdx}_a${cIdx}`, state.alternatives, `backtrack_alt_${eIdx}_${cIdx}`);
-            });
+            const tbody = document.getElementById(`backtrack-table-body-${eIdx}`);
+            if (!tbody) return;
+
+            // Hitung skor bobot kriteria (0–100)
+            const critScores = computeBacktrackScores(`e${eIdx}_c`, state.criteria);
+
+            // Hitung skor alternatif per kriteria
+            const altScores = state.criteria.map((_, cIdx) =>
+                computeBacktrackScores(`e${eIdx}_a${cIdx}`, state.alternatives)
+            );
+
+            // Render baris alternatif
+            let rows = state.alternatives.map((alt, aIdx) => {
+                const cells = state.criteria.map((_, cIdx) => {
+                    const v = altScores[cIdx][aIdx];
+                    const pct = v;
+                    const color = v >= 66 ? 'text-emerald-700' : v >= 33 ? 'text-amber-700' : 'text-rose-600';
+                    return `<td class="px-3 py-2.5 text-center border-r border-slate-100">
+                        <div class="flex flex-col items-center gap-1">
+                            <span class="font-bold text-sm ${color}">${v}</span>
+                            <div class="w-12 bg-slate-100 h-1 rounded-full overflow-hidden">
+                                <div class="h-full bg-amber-400 rounded-full" style="width:${pct}%"></div>
+                            </div>
+                        </div>
+                    </td>`;
+                }).join('');
+                return `<tr class="border-b border-slate-100 hover:bg-white/60">
+                    <td class="px-4 py-2.5 font-semibold text-slate-700 bg-white/40 border-r border-slate-200 whitespace-nowrap sticky left-0">${alt}</td>
+                    ${cells}
+                </tr>`;
+            }).join('');
+
+            // Baris bobot kriteria
+            const weightCells = state.criteria.map((_, cIdx) => {
+                const v = critScores[cIdx];
+                return `<td class="px-3 py-2.5 text-center border-r border-amber-200">
+                    <span class="font-bold text-amber-700">${v}</span>
+                </td>`;
+            }).join('');
+            rows += `<tr class="bg-amber-100 border-t-2 border-amber-300">
+                <td class="px-4 py-2.5 font-bold text-amber-700 border-r border-amber-300 sticky left-0 bg-amber-100 whitespace-nowrap">
+                    Bobot Kriteria
+                    <span class="block text-xs font-normal text-amber-500">(estimasi 0–100)</span>
+                </td>
+                ${weightCells}
+            </tr>`;
+
+            tbody.innerHTML = rows;
         }
 
         // Ambil matriks dari judgments manual
@@ -548,10 +616,9 @@
         }
 
         // Dispatch ke sumber yang dipilih user
+        // Scoring mode: judgments sudah diisi oleh syncInterviewToJudgments(), gunakan getMatrixManual
         function getFullMatrix(prefix, size) {
-            return state.calcSource === 'scoring'
-                ? getMatrixScoring(prefix, size)
-                : getMatrixManual(prefix, size);
+            return getMatrixManual(prefix, size);
         }
 
         function solveAHP(matrix) {
@@ -631,7 +698,10 @@
         }
 
         function calculateGroupResult() {
-            // calcSource menentukan getFullMatrix pakai manual atau scoring — tidak perlu sync
+            // Jika scoring, sync semua interview scores ke judgments terlebih dahulu
+            if (state.calcSource === 'scoring') {
+                syncInterviewToJudgments();
+            }
 
             // Hitung per-expert dulu (simpan untuk ditampilkan)
             let expertResults = state.experts.map((_, eIdx) => {
@@ -736,27 +806,39 @@
                 // Skor mentah — hanya tampil jika mode scoring
                 let rawScoreHtml = '';
                 if (isScoringMode) {
-                    rawScoreHtml = `<div class="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-5">
-                        <h4 class="font-bold text-amber-700 mb-3 text-sm">Skor Interview Mentah</h4>
-                        <div class="mb-4">
-                            <p class="text-xs font-semibold text-slate-500 uppercase mb-2">Kepentingan Kriteria</p>
-                            <div class="flex flex-wrap gap-2">
-                                ${state.criteria.map((c, i) => {
-                                    const s = state.scores[`e${eIdx}_c_${i}`] || '–';
-                                    return `<div class="bg-white rounded-xl px-3 py-1.5 text-sm border flex gap-2"><span class="text-slate-500">${c}</span><span class="font-bold text-amber-600">${s}</span></div>`;
-                                }).join('')}
+                    // Tabel ringkasan per kriteria (skor + alasan)
+                    let critTables = state.criteria.map((crit, cIdx) => {
+                        const rows = state.alternatives.map((alt, aIdx) => {
+                            const v = state.scores[`iv_c${cIdx}_a${aIdx}_e${eIdx}`];
+                            const note = state.notes[`iv_note_c${cIdx}_a${aIdx}_e${eIdx}`] || '';
+                            return `<tr class="border-b border-slate-100">
+                                <td class="px-3 py-2 font-semibold text-slate-700 bg-slate-50 whitespace-nowrap">${alt}</td>
+                                <td class="px-3 py-2 text-center font-bold ${v !== undefined ? 'text-slate-800' : 'text-slate-300'}">${v !== undefined ? v : '–'}</td>
+                                <td class="px-3 py-2 text-xs text-slate-500 italic">${note || '–'}</td>
+                            </tr>`;
+                        }).join('');
+                        const w = state.scores[`iv_w${cIdx}_e${eIdx}`];
+                        return `<div class="mb-3 rounded-xl border overflow-hidden text-xs">
+                            <div class="bg-slate-700 text-white px-3 py-2 font-semibold flex justify-between">
+                                <span>${crit}</span>
+                                <span class="text-amber-300">Bobot: ${w !== undefined ? w : '–'}</span>
                             </div>
+                            <table class="w-full border-collapse">
+                                <thead><tr class="bg-slate-100 text-slate-500">
+                                    <th class="px-3 py-1.5 text-left">Alternatif</th>
+                                    <th class="px-3 py-1.5 text-center">Skor</th>
+                                    <th class="px-3 py-1.5 text-left">Alasan</th>
+                                </tr></thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>`;
+                    }).join('');
+
+                    rawScoreHtml = `<div class="mb-6 rounded-2xl border border-amber-200 overflow-hidden">
+                        <div class="bg-amber-50 px-5 py-3 border-b border-amber-200">
+                            <h4 class="font-bold text-amber-700 text-sm">Interview Scores Mentah (0–100)</h4>
                         </div>
-                        ${state.criteria.map((crit, cIdx) => `
-                            <div class="mb-3">
-                                <p class="text-xs font-semibold text-slate-500 uppercase mb-2">Alternatif → ${crit}</p>
-                                <div class="flex flex-wrap gap-2">
-                                    ${state.alternatives.map((a, i) => {
-                                        const s = state.scores[`e${eIdx}_a${cIdx}_${i}`] || '–';
-                                        return `<div class="bg-white rounded-xl px-3 py-1.5 text-sm border flex gap-2"><span class="text-slate-500">${a}</span><span class="font-bold text-emerald-600">${s}</span></div>`;
-                                    }).join('')}
-                                </div>
-                            </div>`).join('')}
+                        <div class="px-5 py-4">${critTables}</div>
                     </div>`;
                 }
 
@@ -952,8 +1034,13 @@
                     state.alternatives = newAlternatives;
                     state.judgments = newJudgments;
                     state.activeExpertIdx = 0;
+                    // CSV import selalu pakai mode manual
+                    state.inputMode = 'manual';
+                    state.calcSource = 'manual';
 
+                    showPanel('judgments');
                     renderTabs();
+                    renderMethodBadge();
                     renderMatrices();
 
                     document.getElementById('csv-import-msg').innerHTML = `
