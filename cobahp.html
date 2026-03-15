@@ -96,6 +96,26 @@
 
             <div id="csv-import-msg"></div>
             <div id="matrixArea" class="space-y-10"></div>
+
+            <!-- Pilihan sumber kalkulasi -->
+            <div class="bg-white border rounded-2xl p-5 space-y-3">
+                <p class="font-bold text-slate-700 text-sm">Sumber data untuk kalkulasi:</p>
+                <div class="flex flex-wrap gap-3">
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="radio" name="calcSource" value="manual" checked onchange="state.calcSource=this.value"
+                            class="accent-slate-800 w-4 h-4">
+                        <span class="text-sm font-medium text-slate-700">Matriks Manual</span>
+                        <span class="text-xs text-slate-400">(nilai yang diisi di tabel perbandingan)</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="radio" name="calcSource" value="scoring" onchange="state.calcSource=this.value"
+                            class="accent-amber-500 w-4 h-4">
+                        <span class="text-sm font-medium text-amber-700">Scoring Interview</span>
+                        <span class="text-xs text-slate-400">(rasio dari skor 1–10 yang diisi expert)</span>
+                    </label>
+                </div>
+            </div>
+
             <button onclick="calculateGroupResult()" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-bold text-xl shadow-xl hover:bg-emerald-700">HITUNG HASIL KONSENSUS</button>
         </section>
 
@@ -104,8 +124,14 @@
             <!-- ===== BAGIAN YANG DICETAK KE PDF ===== -->
             <div id="pdf-content" class="space-y-8">
 
+                <!-- FOOTER URL -->
+                <div class="flex items-center justify-between text-xs text-slate-400 px-1">
+                    <span>SuperAHP Multi-Expert</span>
+                    <a href="https://fendygp.github.io" target="_blank" class="text-indigo-400 hover:text-indigo-600 font-medium">fendygp.github.io</a>
+                </div>
+
                 <!-- HASIL GRUP -->
-                <div class="bg-white p-8 rounded-3xl border">
+                <div id="pdf-section-grup" class="bg-white p-8 rounded-3xl border">
                     <h2 class="text-xl font-extrabold text-indigo-700 mb-6">Hasil Konsensus Grup</h2>
                     <div class="grid lg:grid-cols-2 gap-10">
                         <div>
@@ -121,7 +147,7 @@
                             <div class="p-6 border rounded-2xl bg-indigo-50">
                                 <h4 class="font-bold text-indigo-900 mb-2">Konsistensi Grup (CR)</h4>
                                 <div id="crValue" class="text-3xl font-black"></div>
-                                <p class="text-xs text-indigo-700 mt-2 italic">*Hasil dianggap valid jika CR &lt; 10%</p>
+                                <div id="crNote"></div>
                             </div>
                         </div>
                     </div>
@@ -157,8 +183,10 @@
             experts: [], criteria: [], alternatives: [],
             activeExpertIdx: 0,
             judgments: {},
-            scores: {},      // scoring mode: { "e0_c_Biaya": 7, "e0_a1_Supplier A": 8, ... }
-            inputMode: 'manual'  // 'manual' | 'scoring'
+            scores: {},       // skor yang diisi user di mode scoring
+            scoresUser: {},   // flag: key ini diisi user sendiri (bukan backtrack)
+            inputMode: 'manual',
+            calcSource: 'manual'  // 'manual' | 'scoring' — sumber untuk kalkulasi
         };
         const RI = [0, 0, 0.58, 0.9, 1.12, 1.24, 1.32, 1.41, 1.45, 1.49];
 
@@ -239,38 +267,45 @@
         // ===== SCORING MODE =====
         function saveScore(key, val) {
             state.scores[key] = parseFloat(val) || 1;
-            // Sinkronisasi ke judgments dari semua skor yang sudah ada
-            syncScoresToJudgments();
-            // Re-render preview matriks pada section yang berubah
+            state.scoresUser[key] = true;  // tandai: ini diisi user, bukan backtrack
+            // Sync hanya key ini ke judgments
+            syncOneScoreToJudgment(key);
+            // Re-render preview
             const parts = key.split('_');
             const eIdx = parseInt(parts[0].replace('e',''));
             if (eIdx !== state.activeExpertIdx) return;
             updateScorePreview();
         }
 
-        function syncScoresToJudgments() {
-            // Kriteria
-            state.experts.forEach((_, eIdx) => {
-                state.criteria.forEach((cA, i) => {
-                    state.criteria.forEach((cB, j) => {
-                        if (i >= j) return;
-                        const sA = state.scores[`e${eIdx}_c_${i}`] || 1;
-                        const sB = state.scores[`e${eIdx}_c_${j}`] || 1;
-                        state.judgments[`e${eIdx}_c_${i}_${j}`] = sA / sB;
-                    });
+        // Sync satu score key ke judgments yang relevan
+        function syncOneScoreToJudgment(key) {
+            const parts = key.split('_');
+            const eIdx = parseInt(parts[0].replace('e', ''));
+            if (parts[1] === 'c') {
+                const i = parseInt(parts[2]);
+                state.criteria.forEach((_, j) => {
+                    if (i === j) return;
+                    const ii = Math.min(i, j), jj = Math.max(i, j);
+                    const sA = state.scores[`e${eIdx}_c_${ii}`] || 1;
+                    const sB = state.scores[`e${eIdx}_c_${jj}`] || 1;
+                    state.judgments[`e${eIdx}_c_${ii}_${jj}`] = sA / sB;
                 });
-                // Alternatif per kriteria
-                state.criteria.forEach((_, cIdx) => {
-                    state.alternatives.forEach((_, i) => {
-                        state.alternatives.forEach((_, j) => {
-                            if (i >= j) return;
-                            const sA = state.scores[`e${eIdx}_a${cIdx}_${i}`] || 1;
-                            const sB = state.scores[`e${eIdx}_a${cIdx}_${j}`] || 1;
-                            state.judgments[`e${eIdx}_a${cIdx}_${i}_${j}`] = sA / sB;
-                        });
-                    });
+            } else {
+                const cIdx = parseInt(parts[1].replace('a', ''));
+                const i = parseInt(parts[2]);
+                state.alternatives.forEach((_, j) => {
+                    if (i === j) return;
+                    const ii = Math.min(i, j), jj = Math.max(i, j);
+                    const sA = state.scores[`e${eIdx}_a${cIdx}_${ii}`] || 1;
+                    const sB = state.scores[`e${eIdx}_a${cIdx}_${jj}`] || 1;
+                    state.judgments[`e${eIdx}_a${cIdx}_${ii}_${jj}`] = sA / sB;
                 });
-            });
+            }
+        }
+
+        // Sync semua scores user ke judgments (hanya yang diisi user, bukan backtrack)
+        function syncUserScoresToJudgments() {
+            Object.keys(state.scoresUser).forEach(key => syncOneScoreToJudgment(key));
         }
 
         function scoringInputRow(label, key, colorRing) {
@@ -452,12 +487,12 @@
             // Normalisasi ke skala 1–10
             const scores = geoMeans.map(g => +(1 + ((g - minG) / range) * 9).toFixed(2));
 
-            // Update state.scores dengan nilai backtrack (hanya jika mode manual)
-            if (state.inputMode === 'manual') {
-                items.forEach((_, i) => {
-                    state.scores[`${prefix}_${i}`] = scores[i];
-                });
-            }
+            // Update state.scores dengan nilai backtrack — TANPA set scoresUser
+            // sehingga tidak dianggap sebagai input user dan tidak overwrite judgments manual
+            items.forEach((_, i) => {
+                state.scores[`${prefix}_${i}`] = scores[i];
+                // scoresUser TIDAK diset — ini hanya estimasi backtrack
+            });
 
             // Render estimasi di container
             const container = document.getElementById(containerId);
@@ -486,7 +521,8 @@
             });
         }
 
-        function getFullMatrix(prefix, size) {
+        // Ambil matriks dari judgments manual
+        function getMatrixManual(prefix, size) {
             let m = Array.from({length: size}, () => Array(size).fill(1));
             for (let i = 0; i < size; i++) {
                 for (let j = 0; j < size; j++) {
@@ -495,6 +531,27 @@
                 }
             }
             return m;
+        }
+
+        // Ambil matriks dari skor interview (rasio skor_i / skor_j)
+        function getMatrixScoring(prefix, size) {
+            let m = Array.from({length: size}, () => Array(size).fill(1));
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    if (i === j) continue;
+                    const sI = state.scores[`${prefix}_${i}`] || 1;
+                    const sJ = state.scores[`${prefix}_${j}`] || 1;
+                    m[i][j] = sI / sJ;
+                }
+            }
+            return m;
+        }
+
+        // Dispatch ke sumber yang dipilih user
+        function getFullMatrix(prefix, size) {
+            return state.calcSource === 'scoring'
+                ? getMatrixScoring(prefix, size)
+                : getMatrixManual(prefix, size);
         }
 
         function solveAHP(matrix) {
@@ -517,6 +574,39 @@
             return { weights, cr };
         }
 
+        // Render tabel matriks perbandingan lengkap
+        function matrixTableHTML(prefix, items) {
+            const n = items.length;
+            let html = `<div class="overflow-x-auto"><table class="w-full text-xs border-collapse">
+                <thead><tr class="bg-slate-100">
+                    <th class="p-1.5 text-left font-semibold text-slate-500">vs</th>`;
+            items.forEach(it => html += `<th class="p-1.5 font-semibold text-slate-500 text-center">${it}</th>`);
+            html += `<th class="p-1.5 font-semibold text-indigo-600 text-center">Bobot</th></tr></thead><tbody>`;
+
+            // Hitung bobot dari matriks untuk ditampilkan di kolom terakhir
+            const mat = getFullMatrix(prefix, n);
+            const { weights } = solveAHP(mat);
+
+            items.forEach((row, i) => {
+                html += `<tr class="border-t border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}">
+                    <td class="p-1.5 font-semibold text-slate-700">${row}</td>`;
+                items.forEach((_, j) => {
+                    let val, cls = '';
+                    if (i === j) { val = '1.000'; cls = 'text-slate-300'; }
+                    else {
+                        val = mat[i][j] >= 1
+                            ? mat[i][j].toFixed(3)
+                            : mat[i][j].toFixed(3);
+                        cls = mat[i][j] > 1 ? 'text-indigo-600 font-bold' : 'text-slate-400';
+                    }
+                    html += `<td class="p-1.5 text-center font-mono ${cls}">${val}</td>`;
+                });
+                html += `<td class="p-1.5 text-center font-bold text-indigo-700">${(weights[i]*100).toFixed(1)}%</td>`;
+                html += `</tr>`;
+            });
+            return html + `</tbody></table></div>`;
+        }
+
         // Render tabel bobot ringkas
         function weightTableHTML(labels, weights, cr, colorClass) {
             let rows = labels.map((lb, i) => `
@@ -530,16 +620,18 @@
                     </td>
                 </tr>`).join('');
             const crColor = cr > 0.1 ? 'text-red-600' : 'text-emerald-600';
+            const crNote = state.calcSource === 'scoring'
+                ? '<span class="text-amber-500 ml-1">(perfectly consistent — dari rasio skor)</span>'
+                : cr > 0.1 ? '<span class="text-red-500">(Tidak Konsisten)</span>' : '<span class="text-emerald-600">(Konsisten)</span>';
             return `<table class="w-full text-sm mb-2">
                 <thead><tr class="text-slate-400 text-xs uppercase"><th class="text-left pb-1">Item</th><th class="text-right pb-1">Bobot</th><th class="pb-1"></th></tr></thead>
                 <tbody>${rows}</tbody>
             </table>
-            <p class="text-xs">CR: <span class="font-bold ${crColor}">${(cr * 100).toFixed(2)}%</span> ${cr > 0.1 ? '<span class="text-red-500">(Tidak Konsisten)</span>' : '<span class="text-emerald-600">(Konsisten)</span>'}</p>`;
+            <p class="text-xs">CR: <span class="font-bold ${crColor}">${(cr * 100).toFixed(2)}%</span> ${crNote}</p>`;
         }
 
         function calculateGroupResult() {
-            // Jika mode scoring, pastikan semua judgments sudah tersinkronisasi dari scores
-            if (state.inputMode === 'scoring') syncScoresToJudgments();
+            // calcSource menentukan getFullMatrix pakai manual atau scoring — tidak perlu sync
 
             // Hitung per-expert dulu (simpan untuk ditampilkan)
             let expertResults = state.experts.map((_, eIdx) => {
@@ -620,6 +712,12 @@
 
             document.getElementById('crValue').innerText = (cr * 100).toFixed(2) + "%";
             document.getElementById('crValue').className = `text-3xl font-black ${cr > 0.1 ? 'text-red-500' : 'text-emerald-500'}`;
+            const crNote = document.getElementById('crNote');
+            if (state.calcSource === 'scoring') {
+                crNote.innerHTML = `<p class="text-xs text-amber-600 mt-2 italic">* CR = 0% karena matriks dari skor interview selalu perfectly consistent secara matematis (a<sub>ij</sub> = s<sub>i</sub>/s<sub>j</sub>). Untuk mengukur konsistensi judgment, gunakan <strong>Matriks Manual</strong>.</p>`;
+            } else {
+                crNote.innerHTML = `<p class="text-xs text-indigo-700 mt-2 italic">*Hasil dianggap valid jika CR &lt; 10%</p>`;
+            }
         }
 
         function renderExpertDetails(expertResults) {
@@ -665,18 +763,36 @@
                 panelsHtml += `<div class="expert-detail-panel ${eIdx === 0 ? 'active' : ''}" id="expert-detail-${eIdx}">
                     <h3 class="font-bold text-slate-700 mb-4 text-sm uppercase tracking-widest">${state.experts[eIdx]}</h3>
                     ${rawScoreHtml}
-                    <div class="grid md:grid-cols-2 gap-6">
-                        <div class="bg-indigo-50 rounded-2xl p-5">
-                            <h4 class="font-bold text-indigo-700 mb-3 text-sm">Bobot Kriteria</h4>
+
+                    <!-- Matriks Kriteria -->
+                    <div class="bg-indigo-50 rounded-2xl p-5 mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-bold text-indigo-700 text-sm">Matriks Perbandingan Kriteria</h4>
+                            <span class="text-xs text-indigo-500">CR: <strong>${(res.critRes.cr*100).toFixed(2)}%</strong>
+                                ${state.calcSource === 'scoring' ? '<span class="text-amber-500">(scoring)</span>' : res.critRes.cr > 0.1 ? '<span class="text-red-500">⚠ Tidak Konsisten</span>' : '<span class="text-emerald-600">✓ Konsisten</span>'}
+                            </span>
+                        </div>
+                        ${matrixTableHTML(`e${eIdx}_c`, state.criteria)}
+                        <div class="mt-3 border-t border-indigo-100 pt-3">
                             ${weightTableHTML(state.criteria, res.critRes.weights, res.critRes.cr, 'bg-indigo-500')}
                         </div>
-                        <div class="space-y-4">
-                            ${state.criteria.map((crit, cIdx) => `
-                                <div class="bg-emerald-50 rounded-2xl p-5">
-                                    <h4 class="font-bold text-emerald-700 mb-3 text-sm">Alternatif &rarr; ${crit}</h4>
+                    </div>
+
+                    <!-- Matriks Alternatif per Kriteria -->
+                    <div class="space-y-4">
+                        ${state.criteria.map((crit, cIdx) => `
+                            <div class="bg-emerald-50 rounded-2xl p-5">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="font-bold text-emerald-700 text-sm">Matriks Alternatif &rarr; ${crit}</h4>
+                                    <span class="text-xs text-emerald-600">CR: <strong>${(res.altResults[cIdx].cr*100).toFixed(2)}%</strong>
+                                        ${state.calcSource === 'scoring' ? '<span class="text-amber-500">(scoring)</span>' : res.altResults[cIdx].cr > 0.1 ? '<span class="text-red-500">⚠</span>' : '<span class="text-emerald-600">✓</span>'}
+                                    </span>
+                                </div>
+                                ${matrixTableHTML(`e${eIdx}_a${cIdx}`, state.alternatives)}
+                                <div class="mt-3 border-t border-emerald-100 pt-3">
                                     ${weightTableHTML(state.alternatives, res.altResults[cIdx].weights, res.altResults[cIdx].cr, 'bg-emerald-500')}
-                                </div>`).join('')}
-                        </div>
+                                </div>
+                            </div>`).join('')}
                     </div>
                 </div>`;
             });
@@ -863,10 +979,11 @@
         async function captureElementToPages(doc, el, margin) {
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
-            const usableH = pageHeight - margin * 2;
+            const footerH = 8;
+            const usableH = pageHeight - margin * 2 - footerH;
             const imgWidth = pageWidth - margin * 2;
 
-            const canvas = await html2canvas(el, { scale: 1.8, useCORS: true, backgroundColor: '#ffffff' });
+            const canvas = await html2canvas(el, { scale: 1.2, useCORS: true, backgroundColor: '#ffffff' });
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
             let remain = imgHeight;
 
@@ -881,7 +998,14 @@
                 slice.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
 
                 doc.addPage();
-                doc.addImage(slice.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, sliceH);
+                doc.addImage(slice.toDataURL('image/jpeg', 0.75), 'JPEG', margin, margin, imgWidth, sliceH);
+
+                // Footer URL di setiap halaman
+                doc.setFontSize(7);
+                doc.setTextColor(180, 180, 180);
+                doc.text('fendygp.github.io', pageWidth / 2, pageHeight - 4, { align: 'center' });
+                doc.setTextColor(0, 0, 0);
+
                 remain -= sliceH;
             }
         }
@@ -924,33 +1048,46 @@
             doc.text(`Dicetak: ${new Date().toLocaleDateString('id-ID', {day:'2-digit',month:'long',year:'numeric'})}`, margin, 54);
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(10);
-            doc.text(`Expert   : ${state.experts.length} orang`, margin, 75);
-            doc.text(`Kriteria : ${state.criteria.join(', ')}`, margin, 84);
-            doc.text(`Alternatif: ${state.alternatives.join(', ')}`, margin, 93);
+            doc.text(`Expert     : ${state.experts.length} orang`, margin, 75);
+            doc.text(`Kriteria   : ${state.criteria.join(', ')}`, margin, 84);
+            doc.text(`Alternatif : ${state.alternatives.join(', ')}`, margin, 93);
+            doc.text(`Sumber data: ${state.calcSource === 'scoring' ? 'Scoring Interview' : 'Matriks Manual'}`, margin, 102);
+
+            // URL di cover
+            const pageHeight = doc.internal.pageSize.getHeight();
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text('fendygp.github.io', pageWidth / 2, pageHeight - 8, { align: 'center' });
 
             // ---- Halaman Resume Grup ----
             addSectionTitle('Hasil Konsensus Grup', 'Peringkat akhir & bobot kriteria gabungan semua expert');
-            const groupEl = document.querySelector('#pdf-content > div:first-child');
+            const groupEl = document.getElementById('pdf-section-grup');
             await captureElementToPages(doc, groupEl, margin);
 
             // ---- Halaman per Expert ----
-            // Tampilkan semua panel dulu
-            document.querySelectorAll('.expert-detail-panel').forEach(p => { p.style.display = 'block'; });
             document.getElementById('expertDetailTabs').style.display = 'none';
 
             for (let eIdx = 0; eIdx < state.experts.length; eIdx++) {
                 addSectionTitle(
                     `Detail: ${state.experts[eIdx]}`,
-                    `Bobot kriteria & alternatif per kriteria — ${state.experts[eIdx]}`
+                    `Matriks perbandingan & bobot — ${state.experts[eIdx]}`
                 );
+
                 const panelEl = document.getElementById(`expert-detail-${eIdx}`);
+
+                // Paksa semua overflow-x-auto jadi visible saat capture agar tabel tidak terpotong
+                const overflowEls = panelEl.querySelectorAll('.overflow-x-auto');
+                overflowEls.forEach(el => { el.style.overflow = 'visible'; });
+                panelEl.style.display = 'block';
+
                 await captureElementToPages(doc, panelEl, margin);
+
+                // Kembalikan
+                overflowEls.forEach(el => { el.style.overflow = ''; });
+                panelEl.style.display = eIdx === 0 ? 'block' : 'none';
             }
 
-            // Kembalikan tampilan layar
-            document.querySelectorAll('.expert-detail-panel').forEach((p, i) => {
-                p.style.display = i === 0 ? 'block' : 'none';
-            });
+            // Kembalikan tab
             document.getElementById('expertDetailTabs').style.display = '';
 
             // Hapus halaman kosong pertama yang auto-dibuat jsPDF jika kita sudah addPage
