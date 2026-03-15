@@ -1,0 +1,51 @@
+#META,experts,2
+#META,criteria,Biaya|Kualitas|Pengiriman
+#META,alternatives,Supplier A|Supplier B|Supplier C
+
+# Expert 1 - Perbandingan Kriteria
+,Biaya,Kualitas,Pengiriman
+Biaya,1,3,5
+Kualitas,,1,2
+Pengiriman,,,1
+
+# Expert 1 - Alternatif untuk Biaya
+,Supplier A,Supplier B,Supplier C
+Supplier A,1,4,6
+Supplier B,,1,3
+Supplier C,,,1
+
+# Expert 1 - Alternatif untuk Kualitas
+,Supplier A,Supplier B,Supplier C
+Supplier A,1,2,5
+Supplier B,,1,3
+Supplier C,,,1
+
+# Expert 1 - Alternatif untuk Pengiriman
+,Supplier A,Supplier B,Supplier C
+Supplier A,1,3,4
+Supplier B,,1,2
+Supplier C,,,1
+
+# Expert 2 - Perbandingan Kriteria
+,Biaya,Kualitas,Pengiriman
+Biaya,1,2,4
+Kualitas,,1,3
+Pengiriman,,,1
+
+# Expert 2 - Alternatif untuk Biaya
+,Supplier A,Supplier B,Supplier C
+Supplier A,1,3,5
+Supplier B,,1,2
+Supplier C,,,1
+
+# Expert 2 - Alternatif untuk Kualitas
+,Supplier A,Supplier B,Supplier C
+Supplier A,1,3,6
+Supplier B,,1,3
+Supplier C,,,1
+
+# Expert 2 - Alternatif untuk Pengiriman
+,Supplier A,Supplier B,Supplier C
+Supplier A,1,2,5
+Supplier B,,1,3
+Supplier C,,,1
